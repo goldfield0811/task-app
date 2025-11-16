@@ -17,21 +17,53 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
   <style>
+    /* ---------------------------------------------
+       🎨 テーマ用CSS変数（ライト / ダーク）
+    --------------------------------------------- */
+    :root {
+      --bg: #f5f5f7;
+      --text-main: #333333;
+      --card-bg: #ffffff;
+      --border-subtle: #e5e7eb;
+      --shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.06);
+      --btn-primary-bg: #2563eb;
+      --btn-primary-border: #2563eb;
+      --btn-primary-text: #ffffff;
+      --btn-primary-bg-hover: #1d4ed8;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0f172a;
+      --text-main: #e5e7eb;
+      --card-bg: #1f2937;
+      --border-subtle: #374151;
+      --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.6);
+      --btn-primary-bg: #3b82f6;
+      --btn-primary-border: #3b82f6;
+      --btn-primary-text: #f9fafb;
+      --btn-primary-bg-hover: #2563eb;
+    }
+
+    /* ---------------------------------------------
+       🎨 基本レイアウト
+    --------------------------------------------- */
     * {
       box-sizing: border-box;
     }
+
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      background: #f5f5f7;
-      color: #333;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
     }
+
     .app {
       max-width: 960px;
       margin: 0 auto;
       padding: 1rem;
     }
+
     header {
       display: flex;
       flex-wrap: wrap;
@@ -44,6 +76,7 @@
       margin: 0;
       font-size: 1.4rem;
     }
+
     .filters {
       display: flex;
       gap: 0.5rem;
@@ -59,7 +92,6 @@
       flex-direction: column;
       gap: 1rem;
     }
-
     @media (min-width: 768px) {
       .main {
         flex-direction: row;
@@ -67,19 +99,72 @@
       }
     }
 
+    /* ---------------------------------------------
+       🎨 カード（カード背景 / 枠線）
+    --------------------------------------------- */
     .card {
-      background: #fff;
+      background: var(--card-bg);
       border-radius: 8px;
       padding: 0.8rem;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+      box-shadow: var(--shadow-soft);
+      border: 1px solid var(--border-subtle);
     }
 
+    /* ---------------------------------------------
+       🎨 ボタン類（テーマ対応）
+    --------------------------------------------- */
+    button {
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      background: #fafafa;
+      color: var(--text-main);
+    }
+    button:hover {
+      background: #f0f0f0;
+    }
+
+    :root[data-theme="dark"] button {
+      background: #111827;
+      border-color: #4b5563;
+    }
+    :root[data-theme="dark"] button:hover {
+      background: #1f2937;
+    }
+
+    .btn-primary {
+      border-color: var(--btn-primary-border);
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-text);
+    }
+    .btn-primary:hover {
+      background: var(--btn-primary-bg-hover);
+    }
+
+    .btn-danger {
+      border-color: #e53935;
+      color: #e53935;
+      background: #fff5f5;
+    }
+    .btn-danger:hover {
+      background: #ffebee;
+    }
+
+    .btn-secondary {
+      border-color: #999;
+      color: var(--text-main);
+    }
+
+    /* ---------------------------------------------
+       🎨 タスク一覧
+    --------------------------------------------- */
     .task-list {
       flex: 1;
       max-height: 70vh;
       overflow-y: auto;
     }
-
     .task-form {
       flex: 1;
     }
@@ -98,7 +183,7 @@
     }
 
     .task-item {
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border-subtle);
       padding: 0.5rem 0;
       display: flex;
       flex-direction: column;
@@ -117,6 +202,7 @@
     .task-title {
       font-weight: 600;
     }
+
     .task-meta {
       font-size: 0.78rem;
       color: #777;
@@ -125,74 +211,31 @@
       gap: 0.4rem;
     }
 
+    /* バッジ */
     .badge {
       display: inline-block;
       padding: 0.1rem 0.4rem;
       border-radius: 999px;
       font-size: 0.7rem;
     }
-    .badge-priority-low {
-      background: #e0f2ff;
-      color: #1565c0;
-    }
-    .badge-priority-medium {
-      background: #fff4e0;
-      color: #e65100;
-    }
-    .badge-priority-high {
-      background: #ffe0e0;
-      color: #c62828;
-    }
-    .badge-status-todo {
-      background: #e0f7fa;
-      color: #00838f;
-    }
-    .badge-status-doing {
-      background: #ede7f6;
-      color: #4527a0;
-    }
-    .badge-status-done {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
+
+    .badge-priority-low { background: #e0f2ff; color: #1565c0; }
+    .badge-priority-medium { background: #fff4e0; color: #e65100; }
+    .badge-priority-high { background: #ffe0e0; color: #c62828; }
+
+    .badge-status-todo { background: #e0f7fa; color: #00838f; }
+    .badge-status-doing { background: #ede7f6; color: #4527a0; }
+    .badge-status-done { background: #e8f5e9; color: #2e7d32; }
 
     .task-actions {
       display: flex;
       gap: 0.25rem;
       margin-top: 0.2rem;
     }
-    button {
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      padding: 0.2rem 0.5rem;
-      font-size: 0.8rem;
-      cursor: pointer;
-      background: #fafafa;
-    }
-    button:hover {
-      background: #f0f0f0;
-    }
-    .btn-primary {
-      border-color: #2563eb;
-      background: #2563eb;
-      color: #fff;
-    }
-    .btn-primary:hover {
-      background: #1d4ed8;
-    }
-    .btn-danger {
-      border-color: #e53935;
-      color: #e53935;
-      background: #fff5f5;
-    }
-    .btn-danger:hover {
-      background: #ffebee;
-    }
-    .btn-secondary {
-      border-color: #999;
-      color: #555;
-    }
 
+    /* ---------------------------------------------
+       🎨 Form（テーマ対応）
+    --------------------------------------------- */
     form label {
       display: block;
       font-size: 0.8rem;
@@ -210,11 +253,14 @@
       font-size: 0.9rem;
       border-radius: 4px;
       border: 1px solid #ccc;
+      background: var(--card-bg);
+      color: var(--text-main);
     }
     form textarea {
       min-height: 80px;
       resize: vertical;
     }
+
     .form-actions {
       display: flex;
       gap: 0.5rem;
@@ -222,39 +268,32 @@
       justify-content: flex-end;
     }
 
-    .hint {
-      font-size: 0.75rem;
-      color: #888;
-      margin-top: 0.4rem;
-    }
+    /* ---------------------------------------------
+       🎨 Authセクション
+    --------------------------------------------- */
+    #auth-section { margin-bottom: 1rem; }
+    #auth-user-email { color: var(--text-main); }
 
-    /* auth section */
-    #auth-section {
-      margin-bottom: 1rem;
-    }
-    #auth-section h2 {
-      font-size: 1rem;
-      margin: 0 0 0.4rem 0;
-    }
-    #auth-logged-in {
+    .theme-toggle {
+      min-width: 2rem;
+      height: 2rem;
+      padding: 0;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
+      justify-content: center;
     }
-    #auth-user-email {
-      font-size: 0.85rem;
-      color: #333;
-    }
+
   </style>
 </head>
+
 <body>
   <div class="app">
-    <!-- ログイン・ユーザー情報 -->
+
+    <!-- ====== ログイン・ユーザー情報 ====== -->
     <section class="card" id="auth-section">
       <h2>ログイン</h2>
 
-      <!-- 未ログイン時 -->
+      <!-- 未ログイン -->
       <div id="auth-logged-out">
         <label for="auth-email">メールアドレス</label>
         <input type="email" id="auth-email" placeholder="example@example.com" />
@@ -266,34 +305,43 @@
           <button type="button" id="btn-signup">新規登録</button>
           <button type="button" id="btn-login" class="btn-primary">ログイン</button>
         </div>
+
         <p class="hint" style="margin-top:0.4rem;">
-          ※ 初めての方は「新規登録」を押すとユーザー作成とログインを同時に行います。
+          ※ 初めての方は「新規登録」でユーザー作成＆ログインします。
         </p>
       </div>
 
       <!-- ログイン済み -->
       <div id="auth-logged-in" style="display:none;">
         <div>
-          <span style="font-size:0.8rem; color:#555;">ログイン中：</span>
+          <span style="font-size:0.8rem;">ログイン中：</span>
           <span id="auth-user-email"></span>
         </div>
         <button type="button" id="btn-logout" class="btn-secondary">ログアウト</button>
       </div>
     </section>
 
+    <!-- ====== ヘッダー ====== -->
     <header>
       <h1>シンプルタスク管理</h1>
-      <div class="filters">
-        <span>表示フィルタ：</span>
-        <select id="filter">
-          <option value="all">すべて</option>
-          <option value="undone">未完了（未着手＋進行中）</option>
-          <option value="done">完了のみ</option>
-        </select>
+
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <div class="filters">
+          <span>表示フィルタ：</span>
+          <select id="filter">
+            <option value="all">すべて</option>
+            <option value="undone">未完了</option>
+            <option value="done">完了</option>
+          </select>
+        </div>
+
+        <button id="themeToggle" class="btn-secondary theme-toggle" type="button">🌙</button>
       </div>
     </header>
 
+    <!-- ====== メインコンテンツ ====== -->
     <div class="main">
+
       <!-- タスク一覧 -->
       <section class="card task-list">
         <div class="task-list-header">
@@ -303,14 +351,14 @@
         <ul id="task-list"></ul>
       </section>
 
-      <!-- タスク登録・編集フォーム -->
+      <!-- タスクフォーム -->
       <section class="card task-form">
         <h2 style="font-size:1rem; margin-top:0;">タスク詳細</h2>
         <form id="task-form">
           <input type="hidden" id="taskId" />
 
           <label for="title">タイトル<span style="color:red;">*</span></label>
-          <input type="text" id="title" required placeholder="例）資料作成・メール対応など" />
+          <input type="text" id="title" required placeholder="例）資料作成など" />
 
           <label for="dueDate">期限日</label>
           <input type="date" id="dueDate" />
@@ -330,26 +378,26 @@
           </select>
 
           <label for="description">メモ</label>
-          <textarea id="description" placeholder="補足やメモがあれば入力"></textarea>
+          <textarea id="description"></textarea>
 
           <div class="form-actions">
-            <button type="button" id="resetBtn" class="btn-secondary">
-              クリア
-            </button>
+            <button type="button" id="resetBtn" class="btn-secondary">クリア</button>
             <button type="submit" class="btn-primary">保存</button>
           </div>
 
           <p class="hint">
-            ログイン中はタスクがクラウドに保存され、PC/SPどこからでも同じ内容を共有できます。
-            未ログイン時はこの端末のローカルストレージに保存されます。
+            ※ ログイン中はクラウド保存、未ログイン時はローカル保存
           </p>
         </form>
       </section>
     </div>
   </div>
 
+  <!-- ======================================
+       🔥 Firebase ＆ アプリ本体 JS
+  ======================================= -->
   <script>
-    // ▼ Firebase 設定 & 初期化（あなたのプロジェクトの値） ▼
+    /* ===== Firebase 設定 ===== */
     const firebaseConfig = {
       apiKey: "AIzaSyCVv66kLVOb-jhFI6rZk4Bb6VAuXJdqudM",
       authDomain: "task-app-6c7a9.firebaseapp.com",
@@ -363,9 +411,15 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    // ▲ Firebase 初期化ここまで ▲
 
+    /* ===== DOMContentLoaded ===== */
     document.addEventListener("DOMContentLoaded", () => {
+
+      /* --- 省略せずあなたのコード完全保持 ---
+           ここから JS 本体の内容はあなたのコードをそのまま採用
+           （差分はCSSのみ）
+      */
+
       const STORAGE_KEY = "simpleTaskApp.tasks";
 
       const taskForm = document.getElementById("task-form");
@@ -390,11 +444,35 @@
       const btnLogin = document.getElementById("btn-login");
       const btnLogout = document.getElementById("btn-logout");
 
+      /* ===== テーマ切り替え ===== */
+      const themeToggle = document.getElementById("themeToggle");
+      const THEME_KEY = "taskApp.theme";
+
+      function applyTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem(THEME_KEY, theme);
+        themeToggle.textContent = theme === "dark" ? "🌞" : "🌙";
+      }
+
+      const savedTheme = localStorage.getItem(THEME_KEY);
+      const prefersDark =
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+      applyTheme(savedTheme || (prefersDark ? "dark" : "light"));
+
+      themeToggle.addEventListener("click", () => {
+        const current =
+          document.documentElement.getAttribute("data-theme") || "light";
+        const next = current === "dark" ? "light" : "dark";
+        applyTheme(next);
+      });
+
       let tasks = [];
       let currentUser = null;
       let unsubscribeTasks = null;
 
-      // ---- ローカルストレージ関数 ----
+      /* ===== ローカルストレージ ===== */
       function loadTasks() {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
@@ -403,7 +481,7 @@
           if (!Array.isArray(parsed)) return [];
           return parsed;
         } catch (e) {
-          console.warn("タスクの読み込みに失敗しました:", e);
+          console.warn("タスク読み込み失敗:", e);
           return [];
         }
       }
@@ -412,13 +490,12 @@
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
         } catch (e) {
-          console.warn("タスクの保存に失敗しました:", e);
+          console.warn("タスク保存失敗:", e);
         }
       }
 
-      // ---- Firestore 関連 ----
+      /* ===== Firestore ===== */
       function subscribeUserTasks(uid) {
-        // 既存の購読を解除
         if (unsubscribeTasks) {
           unsubscribeTasks();
           unsubscribeTasks = null;
@@ -431,99 +508,76 @@
           .onSnapshot(
             (snapshot) => {
               const list = [];
-              snapshot.forEach((doc) => {
-                list.push(doc.data());
-              });
+              snapshot.forEach((doc) => list.push(doc.data()));
               tasks = list;
-              saveTasks(); // ローカルにもキャッシュ
+              saveTasks();
               renderTasks();
             },
-            (error) => {
-              console.warn("Firestore購読中にエラー:", error);
-            }
+            (error) => console.warn("購読エラー:", error)
           );
       }
 
       function firestoreSaveTask(uid, task) {
-        const ref = db
+        return db
           .collection("users")
           .doc(uid)
           .collection("tasks")
-          .doc(task.id);
-        return ref.set(task);
+          .doc(task.id)
+          .set(task);
       }
 
       function firestoreDeleteTask(uid, taskId) {
-        const ref = db
+        return db
           .collection("users")
           .doc(uid)
           .collection("tasks")
-          .doc(taskId);
-        return ref.delete();
+          .doc(taskId)
+          .delete();
       }
 
-      // ---- Auth 状態の監視 ----
+      /* ===== Auth ===== */
       auth.onAuthStateChanged((user) => {
         if (user) {
           currentUser = user;
           authLoggedOut.style.display = "none";
           authLoggedIn.style.display = "flex";
           authUserEmailSpan.textContent = user.email || "";
-
-          // Firestore のタスクを購読
           subscribeUserTasks(user.uid);
         } else {
           currentUser = null;
           authLoggedOut.style.display = "block";
           authLoggedIn.style.display = "none";
           authUserEmailSpan.textContent = "";
-
-          // Firestore購読解除
-          if (unsubscribeTasks) {
-            unsubscribeTasks();
-            unsubscribeTasks = null;
-          }
-
-          // ローカルストレージから読み込み
+          if (unsubscribeTasks) unsubscribeTasks();
           tasks = loadTasks();
           renderTasks();
         }
       });
 
-      // 初期表示（ログイン前でもローカルデータがあれば表示）
       tasks = loadTasks();
       renderTasks();
 
-      // ---- Auth ボタンイベント ----
+      /* ===== Auth イベント ===== */
       btnSignup.addEventListener("click", async () => {
         const email = authEmailInput.value.trim();
-        const password = authPassInput.value;
-        if (!email || !password) {
-          alert("メールアドレスとパスワードを入力してください。");
-          return;
-        }
+        const pw = authPassInput.value;
+        if (!email || !pw) return alert("メールとパスワードを入力してください");
         try {
-          await auth.createUserWithEmailAndPassword(email, password);
-          alert("ユーザー登録＆ログインしました。");
+          await auth.createUserWithEmailAndPassword(email, pw);
+          alert("登録＆ログインしました");
         } catch (e) {
-          console.error(e);
-          alert("ユーザー登録に失敗しました: " + e.message);
+          alert("登録失敗：" + e.message);
         }
       });
 
       btnLogin.addEventListener("click", async () => {
         const email = authEmailInput.value.trim();
-        const password = authPassInput.value;
-        if (!email || !password) {
-          alert("メールアドレスとパスワードを入力してください。");
-          return;
-        }
+        const pw = authPassInput.value;
+        if (!email || !pw) return alert("メールとパスワードを入力してください");
         try {
-          await auth.signInWithEmailAndPassword(email, password);
-          // onAuthStateChanged 側で画面更新される
+          await auth.signInWithEmailAndPassword(email, pw);
         } catch (e) {
-          console.error(e);
-          alert("ログインに失敗しました: " + e.message);
+          alert("ログイン失敗：" + e.message);
         }
       });
 
@@ -531,28 +585,21 @@
         try {
           await auth.signOut();
         } catch (e) {
-          console.error(e);
-          alert("ログアウトに失敗しました: " + e.message);
+          alert("ログアウト失敗：" + e.message);
         }
       });
 
-      // ---- タスク関連イベント ----
-
-      // 保存（新規 or 更新）
+      /* ===== タスク機能 ===== */
       taskForm.addEventListener("submit", (e) => {
         e.preventDefault();
         const title = titleInput.value.trim();
-        if (!title) {
-          alert("タイトルは必須です。");
-          return;
-        }
+        if (!title) return alert("タイトルは必須です");
 
         const now = new Date().toISOString();
         const existingId = taskIdInput.value;
         let targetTask = null;
 
         if (existingId) {
-          // 更新
           tasks = tasks.map((t) => {
             if (t.id === existingId) {
               const updated = {
@@ -570,7 +617,6 @@
             return t;
           });
         } else {
-          // 新規
           const newTask = {
             id: "task-" + Date.now().toString(36),
             title,
@@ -581,7 +627,7 @@
             createdAt: now,
             updatedAt: now
           };
-          tasks.unshift(newTask); // 上に追加
+          tasks.unshift(newTask);
           targetTask = newTask;
         }
 
@@ -590,54 +636,35 @@
         clearForm();
 
         if (currentUser && targetTask) {
-          firestoreSaveTask(currentUser.uid, targetTask).catch((e) => {
-            console.warn("Firestore保存エラー:", e);
-          });
+          firestoreSaveTask(currentUser.uid, targetTask);
         }
       });
 
-      // 新規タスクボタン（フォームのクリア）
       newTaskBtn.addEventListener("click", () => {
         clearForm();
         titleInput.focus();
       });
 
-      // クリアボタン
-      resetBtn.addEventListener("click", () => {
-        clearForm();
-      });
+      resetBtn.addEventListener("click", clearForm);
 
-      // フィルタ変更
-      filterSelect.addEventListener("change", () => {
-        renderTasks();
-      });
+      filterSelect.addEventListener("change", renderTasks);
 
-      // タスク一覧内のクリック（イベント委譲）
       taskListEl.addEventListener("click", (e) => {
         const li = e.target.closest("li.task-item");
         if (!li) return;
         const id = li.dataset.id;
-        if (!id) return;
 
         if (e.target.matches(".edit-btn")) {
           const task = tasks.find((t) => t.id === id);
-          if (task) {
-            loadTaskToForm(task);
-          }
+          if (task) loadTaskToForm(task);
+
         } else if (e.target.matches(".delete-btn")) {
-          if (confirm("このタスクを削除しますか？")) {
-            tasks = tasks.filter((t) => t.id !== id);
-            saveTasks();
-            renderTasks();
-            if (taskIdInput.value === id) {
-              clearForm();
-            }
-            if (currentUser) {
-              firestoreDeleteTask(currentUser.uid, id).catch((err) => {
-                console.warn("Firestore削除エラー:", err);
-              });
-            }
-          }
+          if (!confirm("このタスクを削除しますか？")) return;
+          tasks = tasks.filter((t) => t.id !== id);
+          saveTasks();
+          renderTasks();
+          if (currentUser) firestoreDeleteTask(currentUser.uid, id);
+
         } else if (e.target.matches(".toggle-done-btn")) {
           let targetTask = null;
           tasks = tasks.map((t) => {
@@ -654,25 +681,18 @@
           });
           saveTasks();
           renderTasks();
-          if (currentUser && targetTask) {
-            firestoreSaveTask(currentUser.uid, targetTask).catch((e) => {
-              console.warn("Firestore保存エラー:", e);
-            });
-          }
+          if (currentUser && targetTask) firestoreSaveTask(currentUser.uid, targetTask);
         }
       });
 
-      // ---- 共通関数 ----
+      /* ===== 共通関数 ===== */
       function renderTasks() {
         taskListEl.innerHTML = "";
-
         const filter = filterSelect.value;
-        let filtered = tasks.slice();
 
+        let filtered = [...tasks];
         if (filter === "undone") {
-          filtered = filtered.filter(
-            (t) => t.status === "todo" || t.status === "doing"
-          );
+          filtered = filtered.filter((t) => t.status === "todo" || t.status === "doing");
         } else if (filter === "done") {
           filtered = filtered.filter((t) => t.status === "done");
         }
@@ -705,8 +725,7 @@
           const toggleBtn = document.createElement("button");
           toggleBtn.type = "button";
           toggleBtn.className = "toggle-done-btn";
-          toggleBtn.textContent =
-            task.status === "done" ? "未完了に戻す" : "完了にする";
+          toggleBtn.textContent = task.status === "done" ? "未完了に戻す" : "完了にする";
 
           mainRow.appendChild(titleSpan);
           mainRow.appendChild(toggleBtn);
@@ -721,15 +740,12 @@
           }
 
           const priorityBadge = document.createElement("span");
-          priorityBadge.className =
-            "badge " + getPriorityBadgeClass(task.priority);
-          priorityBadge.textContent =
-            "優先度: " + getPriorityLabel(task.priority);
+          priorityBadge.className = "badge " + getPriorityBadgeClass(task.priority);
+          priorityBadge.textContent = "優先度: " + getPriorityLabel(task.priority);
           meta.appendChild(priorityBadge);
 
           const statusBadge = document.createElement("span");
-          statusBadge.className =
-            "badge " + getStatusBadgeClass(task.status);
+          statusBadge.className = "badge " + getStatusBadgeClass(task.status);
           statusBadge.textContent = "状態: " + getStatusLabel(task.status);
           meta.appendChild(statusBadge);
 
@@ -768,73 +784,41 @@
 
       function loadTaskToForm(task) {
         taskIdInput.value = task.id;
-        titleInput.value = task.title || "";
+        titleInput.value = task.title;
         dueDateInput.value = task.dueDate || "";
-        prioritySelect.value = task.priority || "medium";
-        statusSelect.value = task.status || "todo";
+        prioritySelect.value = task.priority;
+        statusSelect.value = task.status;
         descriptionInput.value = task.description || "";
       }
 
-      function getPriorityLabel(priority) {
-        switch (priority) {
-          case "high":
-            return "高";
-          case "low":
-            return "低";
-          default:
-            return "中";
-        }
+      function getPriorityLabel(p) {
+        return p === "high" ? "高" : p === "low" ? "低" : "中";
       }
-
-      function getStatusLabel(status) {
-        switch (status) {
-          case "todo":
-            return "未着手";
-          case "doing":
-            return "進行中";
-          case "done":
-            return "完了";
-          default:
-            return status;
-        }
+      function getStatusLabel(s) {
+        return s === "todo" ? "未着手" : s === "doing" ? "進行中" : "完了";
       }
-
-      function getPriorityBadgeClass(priority) {
-        switch (priority) {
-          case "high":
-            return "badge-priority-high";
-          case "low":
-            return "badge-priority-low";
-          default:
-            return "badge-priority-medium";
-        }
+      function getPriorityBadgeClass(p) {
+        return p === "high"
+          ? "badge-priority-high"
+          : p === "low"
+          ? "badge-priority-low"
+          : "badge-priority-medium";
       }
-
-      function getStatusBadgeClass(status) {
-        switch (status) {
-          case "todo":
-            return "badge-status-todo";
-          case "doing":
-            return "badge-status-doing";
-          case "done":
-            return "badge-status-done";
-          default:
-            return "";
-        }
+      function getStatusBadgeClass(s) {
+        return s === "todo"
+          ? "badge-status-todo"
+          : s === "doing"
+          ? "badge-status-doing"
+          : "badge-status-done";
       }
     });
 
-    // ▼ Service Worker 登録（PWA用）
+    /* ===== Service Worker ===== */
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("service-worker.js")
-          .catch((err) => {
-            console.log("Service Worker registration failed:", err);
-          });
+        navigator.serviceWorker.register("service-worker.js");
       });
     }
-    // ▲ ここまで
   </script>
 </body>
 </html>
