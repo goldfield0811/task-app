@@ -5,12 +5,16 @@
   <title>シンプルタスク管理</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- ▼ PWA用 追記部分 ▼ -->
+  <!-- PWA用 -->
   <meta name="theme-color" content="#2563eb" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png" />
-  <!-- ▲ ここまでPWA用 追記部分 ▲ -->
+
+  <!-- Firebase compat SDK 読み込み -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
   <style>
     * {
@@ -196,6 +200,8 @@
       margin-bottom: 0.1rem;
     }
     form input[type="text"],
+    form input[type="email"],
+    form input[type="password"],
     form input[type="date"],
     form select,
     form textarea {
@@ -221,10 +227,60 @@
       color: #888;
       margin-top: 0.4rem;
     }
+
+    /* auth section */
+    #auth-section {
+      margin-bottom: 1rem;
+    }
+    #auth-section h2 {
+      font-size: 1rem;
+      margin: 0 0 0.4rem 0;
+    }
+    #auth-logged-in {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    #auth-user-email {
+      font-size: 0.85rem;
+      color: #333;
+    }
   </style>
 </head>
 <body>
   <div class="app">
+    <!-- ログイン・ユーザー情報 -->
+    <section class="card" id="auth-section">
+      <h2>ログイン</h2>
+
+      <!-- 未ログイン時 -->
+      <div id="auth-logged-out">
+        <label for="auth-email">メールアドレス</label>
+        <input type="email" id="auth-email" placeholder="example@example.com" />
+
+        <label for="auth-password" style="margin-top:0.4rem;">パスワード</label>
+        <input type="password" id="auth-password" placeholder="6文字以上" />
+
+        <div style="margin-top:0.6rem; display:flex; gap:0.5rem; justify-content:flex-end;">
+          <button type="button" id="btn-signup">新規登録</button>
+          <button type="button" id="btn-login" class="btn-primary">ログイン</button>
+        </div>
+        <p class="hint" style="margin-top:0.4rem;">
+          ※ 初めての方は「新規登録」を押すとユーザー作成とログインを同時に行います。
+        </p>
+      </div>
+
+      <!-- ログイン済み -->
+      <div id="auth-logged-in" style="display:none;">
+        <div>
+          <span style="font-size:0.8rem; color:#555;">ログイン中：</span>
+          <span id="auth-user-email"></span>
+        </div>
+        <button type="button" id="btn-logout" class="btn-secondary">ログアウト</button>
+      </div>
+    </section>
+
     <header>
       <h1>シンプルタスク管理</h1>
       <div class="filters">
@@ -284,7 +340,8 @@
           </div>
 
           <p class="hint">
-            保存したタスクはブラウザのローカルストレージに自動保存されます。
+            ログイン中はタスクがクラウドに保存され、PC/SPどこからでも同じ内容を共有できます。
+            未ログイン時はこの端末のローカルストレージに保存されます。
           </p>
         </form>
       </section>
@@ -292,6 +349,22 @@
   </div>
 
   <script>
+    // ▼ Firebase 設定 & 初期化（あなたのプロジェクトの値） ▼
+    const firebaseConfig = {
+      apiKey: "AIzaSyCVv66kLVOb-jhFI6rZk4Bb6VAuXJdqudM",
+      authDomain: "task-app-6c7a9.firebaseapp.com",
+      projectId: "task-app-6c7a9",
+      storageBucket: "task-app-6c7a9.firebasestorage.app",
+      messagingSenderId: "164838034764",
+      appId: "1:164838034764:web:cef4f3a2292b00dde993e9",
+      measurementId: "G-LJF99YFG4B"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    // ▲ Firebase 初期化ここまで ▲
+
     document.addEventListener("DOMContentLoaded", () => {
       const STORAGE_KEY = "simpleTaskApp.tasks";
 
@@ -307,12 +380,163 @@
       const newTaskBtn = document.getElementById("newTaskBtn");
       const resetBtn = document.getElementById("resetBtn");
 
-      let tasks = loadTasks();
+      // auth UI
+      const authLoggedOut = document.getElementById("auth-logged-out");
+      const authLoggedIn = document.getElementById("auth-logged-in");
+      const authEmailInput = document.getElementById("auth-email");
+      const authPassInput = document.getElementById("auth-password");
+      const authUserEmailSpan = document.getElementById("auth-user-email");
+      const btnSignup = document.getElementById("btn-signup");
+      const btnLogin = document.getElementById("btn-login");
+      const btnLogout = document.getElementById("btn-logout");
 
-      // --- 初期表示 ---
+      let tasks = [];
+      let currentUser = null;
+      let unsubscribeTasks = null;
+
+      // ---- ローカルストレージ関数 ----
+      function loadTasks() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return [];
+          return parsed;
+        } catch (e) {
+          console.warn("タスクの読み込みに失敗しました:", e);
+          return [];
+        }
+      }
+
+      function saveTasks() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        } catch (e) {
+          console.warn("タスクの保存に失敗しました:", e);
+        }
+      }
+
+      // ---- Firestore 関連 ----
+      function subscribeUserTasks(uid) {
+        // 既存の購読を解除
+        if (unsubscribeTasks) {
+          unsubscribeTasks();
+          unsubscribeTasks = null;
+        }
+        unsubscribeTasks = db
+          .collection("users")
+          .doc(uid)
+          .collection("tasks")
+          .orderBy("createdAt", "desc")
+          .onSnapshot(
+            (snapshot) => {
+              const list = [];
+              snapshot.forEach((doc) => {
+                list.push(doc.data());
+              });
+              tasks = list;
+              saveTasks(); // ローカルにもキャッシュ
+              renderTasks();
+            },
+            (error) => {
+              console.warn("Firestore購読中にエラー:", error);
+            }
+          );
+      }
+
+      function firestoreSaveTask(uid, task) {
+        const ref = db
+          .collection("users")
+          .doc(uid)
+          .collection("tasks")
+          .doc(task.id);
+        return ref.set(task);
+      }
+
+      function firestoreDeleteTask(uid, taskId) {
+        const ref = db
+          .collection("users")
+          .doc(uid)
+          .collection("tasks")
+          .doc(taskId);
+        return ref.delete();
+      }
+
+      // ---- Auth 状態の監視 ----
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          currentUser = user;
+          authLoggedOut.style.display = "none";
+          authLoggedIn.style.display = "flex";
+          authUserEmailSpan.textContent = user.email || "";
+
+          // Firestore のタスクを購読
+          subscribeUserTasks(user.uid);
+        } else {
+          currentUser = null;
+          authLoggedOut.style.display = "block";
+          authLoggedIn.style.display = "none";
+          authUserEmailSpan.textContent = "";
+
+          // Firestore購読解除
+          if (unsubscribeTasks) {
+            unsubscribeTasks();
+            unsubscribeTasks = null;
+          }
+
+          // ローカルストレージから読み込み
+          tasks = loadTasks();
+          renderTasks();
+        }
+      });
+
+      // 初期表示（ログイン前でもローカルデータがあれば表示）
+      tasks = loadTasks();
       renderTasks();
 
-      // --- イベント設定 ---
+      // ---- Auth ボタンイベント ----
+      btnSignup.addEventListener("click", async () => {
+        const email = authEmailInput.value.trim();
+        const password = authPassInput.value;
+        if (!email || !password) {
+          alert("メールアドレスとパスワードを入力してください。");
+          return;
+        }
+        try {
+          await auth.createUserWithEmailAndPassword(email, password);
+          alert("ユーザー登録＆ログインしました。");
+        } catch (e) {
+          console.error(e);
+          alert("ユーザー登録に失敗しました: " + e.message);
+        }
+      });
+
+      btnLogin.addEventListener("click", async () => {
+        const email = authEmailInput.value.trim();
+        const password = authPassInput.value;
+        if (!email || !password) {
+          alert("メールアドレスとパスワードを入力してください。");
+          return;
+        }
+        try {
+          await auth.signInWithEmailAndPassword(email, password);
+          // onAuthStateChanged 側で画面更新される
+        } catch (e) {
+          console.error(e);
+          alert("ログインに失敗しました: " + e.message);
+        }
+      });
+
+      btnLogout.addEventListener("click", async () => {
+        try {
+          await auth.signOut();
+        } catch (e) {
+          console.error(e);
+          alert("ログアウトに失敗しました: " + e.message);
+        }
+      });
+
+      // ---- タスク関連イベント ----
 
       // 保存（新規 or 更新）
       taskForm.addEventListener("submit", (e) => {
@@ -325,22 +549,26 @@
 
         const now = new Date().toISOString();
         const existingId = taskIdInput.value;
+        let targetTask = null;
 
         if (existingId) {
           // 更新
-          tasks = tasks.map((t) =>
-            t.id === existingId
-              ? {
-                  ...t,
-                  title,
-                  dueDate: dueDateInput.value || null,
-                  priority: prioritySelect.value,
-                  status: statusSelect.value,
-                  description: descriptionInput.value,
-                  updatedAt: now,
-                }
-              : t
-          );
+          tasks = tasks.map((t) => {
+            if (t.id === existingId) {
+              const updated = {
+                ...t,
+                title,
+                dueDate: dueDateInput.value || null,
+                priority: prioritySelect.value,
+                status: statusSelect.value,
+                description: descriptionInput.value,
+                updatedAt: now
+              };
+              targetTask = updated;
+              return updated;
+            }
+            return t;
+          });
         } else {
           // 新規
           const newTask = {
@@ -351,14 +579,21 @@
             status: statusSelect.value,
             description: descriptionInput.value,
             createdAt: now,
-            updatedAt: now,
+            updatedAt: now
           };
           tasks.unshift(newTask); // 上に追加
+          targetTask = newTask;
         }
 
         saveTasks();
         renderTasks();
         clearForm();
+
+        if (currentUser && targetTask) {
+          firestoreSaveTask(currentUser.uid, targetTask).catch((e) => {
+            console.warn("Firestore保存エラー:", e);
+          });
+        }
       });
 
       // 新規タスクボタン（フォームのクリア）
@@ -397,41 +632,37 @@
             if (taskIdInput.value === id) {
               clearForm();
             }
+            if (currentUser) {
+              firestoreDeleteTask(currentUser.uid, id).catch((err) => {
+                console.warn("Firestore削除エラー:", err);
+              });
+            }
           }
         } else if (e.target.matches(".toggle-done-btn")) {
-          tasks = tasks.map((t) =>
-            t.id === id
-              ? {
-                  ...t,
-                  status: t.status === "done" ? "todo" : "done",
-                  updatedAt: new Date().toISOString(),
-                }
-              : t
-          );
+          let targetTask = null;
+          tasks = tasks.map((t) => {
+            if (t.id === id) {
+              const updated = {
+                ...t,
+                status: t.status === "done" ? "todo" : "done",
+                updatedAt: new Date().toISOString()
+              };
+              targetTask = updated;
+              return updated;
+            }
+            return t;
+          });
           saveTasks();
           renderTasks();
+          if (currentUser && targetTask) {
+            firestoreSaveTask(currentUser.uid, targetTask).catch((e) => {
+              console.warn("Firestore保存エラー:", e);
+            });
+          }
         }
       });
 
-      // --- 関数群 ---
-
-      function loadTasks() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (!raw) return [];
-          const parsed = JSON.parse(raw);
-          if (!Array.isArray(parsed)) return [];
-          return parsed;
-        } catch (e) {
-          console.warn("タスクの読み込みに失敗しました:", e);
-          return [];
-        }
-      }
-
-      function saveTasks() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-      }
-
+      // ---- 共通関数 ----
       function renderTasks() {
         taskListEl.innerHTML = "";
 
@@ -474,7 +705,8 @@
           const toggleBtn = document.createElement("button");
           toggleBtn.type = "button";
           toggleBtn.className = "toggle-done-btn";
-          toggleBtn.textContent = task.status === "done" ? "未完了に戻す" : "完了にする";
+          toggleBtn.textContent =
+            task.status === "done" ? "未完了に戻す" : "完了にする";
 
           mainRow.appendChild(titleSpan);
           mainRow.appendChild(toggleBtn);
@@ -491,7 +723,8 @@
           const priorityBadge = document.createElement("span");
           priorityBadge.className =
             "badge " + getPriorityBadgeClass(task.priority);
-          priorityBadge.textContent = "優先度: " + getPriorityLabel(task.priority);
+          priorityBadge.textContent =
+            "優先度: " + getPriorityLabel(task.priority);
           meta.appendChild(priorityBadge);
 
           const statusBadge = document.createElement("span");
